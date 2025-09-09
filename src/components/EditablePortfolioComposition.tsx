@@ -32,8 +32,12 @@ export function EditablePortfolioComposition({
   data, 
   onCompositionChange 
 }: EditablePortfolioCompositionProps) {
-  const [composition, setComposition] = useState(data);
   const [editMode, setEditMode] = useState(false);
+  const [tempData, setTempData] = useState(data);
+  const [originalData] = useState(data);
+  const [rebalancePeriod, setRebalancePeriod] = useState("monthly");
+  const [customDays, setCustomDays] = useState("");
+  const [allowedDeviation, setAllowedDeviation] = useState("5");
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -52,7 +56,7 @@ export function EditablePortfolioComposition({
   };
 
   const updatePercentage = (index: number, newPercentage: number) => {
-    const newComposition = [...composition];
+    const newComposition = [...tempData];
     const oldPercentage = newComposition[index].percentage;
     const difference = newPercentage - oldPercentage;
     
@@ -79,26 +83,28 @@ export function EditablePortfolioComposition({
       });
     }
     
-    setComposition(newComposition);
+    setTempData(newComposition);
   };
 
   const handleSave = () => {
-    onCompositionChange(composition);
+    onCompositionChange(tempData);
     setEditMode(false);
   };
 
   const handleReset = () => {
-    setComposition(data);
+    setTempData(originalData);
   };
 
   const resetToEqual = () => {
-    const equalPercentage = 100 / composition.length;
-    const newComposition = composition.map(item => ({
+    const equalPercentage = 100 / tempData.length;
+    const newComposition = tempData.map(item => ({
       ...item,
       percentage: equalPercentage
     }));
-    setComposition(newComposition);
+    setTempData(newComposition);
   };
+
+  const displayData = editMode ? tempData : data;
 
   return (
     <Card className="card-gradient p-6 mb-6 border-0">
@@ -109,7 +115,10 @@ export function EditablePortfolioComposition({
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => setEditMode(true)}
+              onClick={() => {
+                setTempData(data);
+                setEditMode(true);
+              }}
             >
               편집
             </Button>
@@ -143,7 +152,7 @@ export function EditablePortfolioComposition({
       
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={composition} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <BarChart data={displayData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
             <XAxis 
               dataKey="symbol" 
               tick={{ fontSize: 12 }}
@@ -156,7 +165,7 @@ export function EditablePortfolioComposition({
             />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="percentage" radius={[4, 4, 0, 0]}>
-              {composition.map((entry, index) => (
+              {displayData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
                   fill={COLORS[index % COLORS.length]} 
@@ -170,7 +179,7 @@ export function EditablePortfolioComposition({
       {editMode && (
         <div className="mt-6 space-y-4">
           <h3 className="font-semibold">비중 조정</h3>
-          {composition.map((item, index) => (
+          {tempData.map((item, index) => (
             <div key={item.symbol} className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">{item.symbol}</Label>
@@ -198,10 +207,65 @@ export function EditablePortfolioComposition({
             </div>
           ))}
           <div className="text-sm text-muted-foreground text-center pt-2 border-t">
-            총합: {composition.reduce((sum, item) => sum + item.percentage, 0).toFixed(1)}%
+            총합: {tempData.reduce((sum, item) => sum + item.percentage, 0).toFixed(1)}%
           </div>
         </div>
       )}
+      
+      {/* 리밸런싱 설정 */}
+      <Card className="card-gradient p-4 border-0 mt-4">
+        <h3 className="font-semibold mb-4">리밸런싱 설정</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">리밸런싱 주기</label>
+            <select 
+              className="w-full p-3 border border-border rounded-lg bg-background text-sm"
+              value={rebalancePeriod}
+              onChange={(e) => setRebalancePeriod(e.target.value)}
+            >
+              <option value="daily">매일</option>
+              <option value="weekly">매주</option>
+              <option value="monthly">매월</option>
+              <option value="quarterly">분기별 (3개월)</option>
+              <option value="semi-annual">반기별 (6개월)</option>
+              <option value="annual">연간 (12개월)</option>
+              <option value="custom">직접 입력</option>
+            </select>
+            
+            {rebalancePeriod === "custom" && (
+              <div className="mt-3">
+                <label className="text-sm font-medium mb-2 block">리밸런싱 간격 (일)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={customDays}
+                  onChange={(e) => setCustomDays(e.target.value)}
+                  placeholder="예: 30"
+                  className="w-full p-3 border border-border rounded-lg bg-background text-sm"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  1일 ~ 365일 사이의 값을 입력해주세요
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium mb-2 block">허용 편차</label>
+            <select 
+              className="w-full p-3 border border-border rounded-lg bg-background text-sm"
+              value={allowedDeviation}
+              onChange={(e) => setAllowedDeviation(e.target.value)}
+            >
+              <option value="5">5% 이상 차이 시</option>
+              <option value="10">10% 이상 차이 시</option>
+              <option value="15">15% 이상 차이 시</option>
+              <option value="20">20% 이상 차이 시</option>
+            </select>
+          </div>
+        </div>
+      </Card>
     </Card>
   );
 }
