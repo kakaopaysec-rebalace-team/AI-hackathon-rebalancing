@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils";
-import { BarChart3, Settings, GitCompare } from "lucide-react";
+import { Wallet, Settings, GitCompare } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 
 const navigationItems = [
   {
-    label: "리밸런싱 실행",
+    label: "잔고",
     href: "/",
-    icon: BarChart3,
+    icon: Wallet,
   },
   {
     label: "전략 생성",
