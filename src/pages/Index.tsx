@@ -1,5 +1,6 @@
 import { PortfolioSummary } from "@/components/PortfolioSummary";
 import { PortfolioCard } from "@/components/PortfolioCard";
+import { PortfolioComposition } from "@/components/PortfolioComposition";
 import { BottomNavigation } from "@/components/BottomNavigation";
 
 // Mock data for demonstration
@@ -62,6 +63,15 @@ const mockPortfolio = {
 };
 
 const Index = () => {
+  // Calculate portfolio composition data
+  const compositionData = mockPortfolio.holdings.map((holding) => ({
+    symbol: holding.symbol,
+    name: holding.name,
+    value: holding.totalValue,
+    percentage: (holding.totalValue / mockPortfolio.totalValue) * 100,
+    color: ''
+  }));
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="p-4">
@@ -70,6 +80,8 @@ const Index = () => {
           totalChange={mockPortfolio.totalChange}
           totalChangePercent={mockPortfolio.totalChangePercent}
         />
+        
+        <PortfolioComposition data={compositionData} />
         
         <div className="mb-4">
           <h2 className="text-xl font-bold mb-4">보유 종목</h2>
