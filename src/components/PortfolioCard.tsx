@@ -11,6 +11,7 @@ interface PortfolioCardProps {
   totalValue: number;
   change: number;
   changePercent: number;
+  portfolioPercent: number;
 }
 
 export function PortfolioCard({
@@ -22,6 +23,7 @@ export function PortfolioCard({
   totalValue,
   change,
   changePercent,
+  portfolioPercent,
 }: PortfolioCardProps) {
   const isPositive = change >= 0;
   
@@ -29,7 +31,12 @@ export function PortfolioCard({
     <Card className="card-gradient p-4 mb-3 border-0">
       <div className="flex justify-between items-start mb-3">
         <div>
-          <h3 className="font-semibold text-lg text-foreground">{symbol}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-lg text-foreground">{symbol}</h3>
+            <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-full font-medium">
+              {portfolioPercent.toFixed(1)}%
+            </span>
+          </div>
           <p className="text-sm text-muted-foreground">{name}</p>
         </div>
         <div className="text-right">

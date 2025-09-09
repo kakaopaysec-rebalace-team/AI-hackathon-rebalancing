@@ -85,19 +85,23 @@ const Index = () => {
         
         <div className="mb-4">
           <h2 className="text-xl font-bold mb-4">보유 종목</h2>
-          {mockPortfolio.holdings.map((holding) => (
-            <PortfolioCard
-              key={holding.symbol}
-              symbol={holding.symbol}
-              name={holding.name}
-              shares={holding.shares}
-              currentPrice={holding.currentPrice}
-              avgPrice={holding.avgPrice}
-              totalValue={holding.totalValue}
-              change={holding.change}
-              changePercent={holding.changePercent}
-            />
-          ))}
+          {mockPortfolio.holdings.map((holding) => {
+            const portfolioPercent = (holding.totalValue / mockPortfolio.totalValue) * 100;
+            return (
+              <PortfolioCard
+                key={holding.symbol}
+                symbol={holding.symbol}
+                name={holding.name}
+                shares={holding.shares}
+                currentPrice={holding.currentPrice}
+                avgPrice={holding.avgPrice}
+                totalValue={holding.totalValue}
+                change={holding.change}
+                changePercent={holding.changePercent}
+                portfolioPercent={portfolioPercent}
+              />
+            );
+          })}
         </div>
       </div>
       
