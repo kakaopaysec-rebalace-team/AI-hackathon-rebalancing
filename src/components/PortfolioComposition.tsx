@@ -1,5 +1,7 @@
 import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
+import { useState } from "react";
 
 interface CompositionData {
   symbol: string;
@@ -23,6 +25,8 @@ const COLORS = [
 ];
 
 export function PortfolioComposition({ data }: PortfolioCompositionProps) {
+  const [isRebalancingOn, setIsRebalancingOn] = useState(true);
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
@@ -41,7 +45,18 @@ export function PortfolioComposition({ data }: PortfolioCompositionProps) {
 
   return (
     <Card className="card-gradient p-6 mb-6 border-0">
-      <h2 className="text-lg font-semibold mb-4">포트폴리오 구성</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold">포트폴리오 구성</h2>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            리밸런싱: {isRebalancingOn ? 'ON' : 'OFF'}
+          </span>
+          <Switch
+            checked={isRebalancingOn}
+            onCheckedChange={setIsRebalancingOn}
+          />
+        </div>
+      </div>
       
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
