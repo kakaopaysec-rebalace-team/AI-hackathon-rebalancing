@@ -9,7 +9,7 @@ const navigationItems = [
     icon: Wallet,
   },
   {
-    label: "전략 생성",
+    label: "리밸런싱",
     href: "/strategy-create",
     icon: Settings,
   },

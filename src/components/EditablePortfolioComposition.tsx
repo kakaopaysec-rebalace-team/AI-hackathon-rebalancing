@@ -91,6 +91,11 @@ export function EditablePortfolioComposition({
     setEditMode(false);
   };
 
+  const handleCancel = () => {
+    setTempData(data);
+    setEditMode(false);
+  };
+
   const handleReset = () => {
     setTempData(originalData);
   };
@@ -124,6 +129,13 @@ export function EditablePortfolioComposition({
             </Button>
           ) : (
             <>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleCancel}
+              >
+                취소
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm"
