@@ -47,6 +47,8 @@ const initialComposition = [
 const StrategyCreate = () => {
   const [composition, setComposition] = useState(initialComposition);
   const [strategyName, setStrategyName] = useState("");
+  const [rebalancePeriod, setRebalancePeriod] = useState("monthly");
+  const [customDays, setCustomDays] = useState("");
   const { toast } = useToast();
 
   const handleCompositionChange = (newComposition: typeof initialComposition) => {
@@ -66,9 +68,25 @@ const StrategyCreate = () => {
       return;
     }
     
+    if (rebalancePeriod === "custom" && (!customDays || parseInt(customDays) < 1 || parseInt(customDays) > 365)) {
+      toast({
+        title: "리밸런싱 간격을 올바르게 입력해주세요",
+        description: "1일 ~ 365일 사이의 값을 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const periodText = rebalancePeriod === "custom" ? `${customDays}일마다` : 
+                      rebalancePeriod === "daily" ? "매일" :
+                      rebalancePeriod === "weekly" ? "매주" :
+                      rebalancePeriod === "monthly" ? "매월" :
+                      rebalancePeriod === "quarterly" ? "분기별" :
+                      rebalancePeriod === "semi-annual" ? "반기별" : "연간";
+    
     toast({
       title: "리밸런싱 전략이 생성되었습니다",
-      description: `'${strategyName}' 전략이 성공적으로 저장되었습니다.`,
+      description: `'${strategyName}' 전략 (${periodText})이 성공적으로 저장되었습니다.`,
     });
   };
 
@@ -99,14 +117,37 @@ const StrategyCreate = () => {
             
             <div>
               <label className="text-sm font-medium mb-2 block">리밸런싱 주기</label>
-              <select className="w-full p-3 border border-border rounded-lg bg-background">
+              <select 
+                className="w-full p-3 border border-border rounded-lg bg-background"
+                value={rebalancePeriod}
+                onChange={(e) => setRebalancePeriod(e.target.value)}
+              >
                 <option value="daily">매일</option>
                 <option value="weekly">매주</option>
                 <option value="monthly">매월</option>
                 <option value="quarterly">분기별 (3개월)</option>
                 <option value="semi-annual">반기별 (6개월)</option>
                 <option value="annual">연간 (12개월)</option>
+                <option value="custom">직접 입력</option>
               </select>
+              
+              {rebalancePeriod === "custom" && (
+                <div className="mt-3">
+                  <label className="text-sm font-medium mb-2 block">리밸런싱 간격 (일)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={customDays}
+                    onChange={(e) => setCustomDays(e.target.value)}
+                    placeholder="예: 30"
+                    className="w-full p-3 border border-border rounded-lg bg-background"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    1일 ~ 365일 사이의 값을 입력해주세요
+                  </p>
+                </div>
+              )}
             </div>
             
             <div>
