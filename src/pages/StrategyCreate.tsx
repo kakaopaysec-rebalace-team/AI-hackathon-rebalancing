@@ -100,10 +100,12 @@ const StrategyCreate = () => {
             <div>
               <label className="text-sm font-medium mb-2 block">리밸런싱 주기</label>
               <select className="w-full p-3 border border-border rounded-lg bg-background">
+                <option value="daily">매일</option>
+                <option value="weekly">매주</option>
                 <option value="monthly">매월</option>
-                <option value="quarterly">분기별</option>
-                <option value="semi-annual">반기별</option>
-                <option value="annual">연간</option>
+                <option value="quarterly">분기별 (3개월)</option>
+                <option value="semi-annual">반기별 (6개월)</option>
+                <option value="annual">연간 (12개월)</option>
               </select>
             </div>
             

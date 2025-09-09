@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import { useState } from "react";
 
 interface CompositionData {
@@ -35,7 +35,7 @@ export function EditablePortfolioComposition({
   const [composition, setComposition] = useState(data);
   const [editMode, setEditMode] = useState(false);
 
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
@@ -49,27 +49,6 @@ export function EditablePortfolioComposition({
       );
     }
     return null;
-  };
-
-  const CustomLegend = ({ payload }: any) => {
-    return (
-      <div className="grid grid-cols-2 gap-2 mt-4">
-        {payload?.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-2">
-            <div 
-              className="w-3 h-3 rounded-full" 
-              style={{ backgroundColor: entry.color }}
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{entry.payload.symbol}</p>
-              <p className="text-xs text-muted-foreground">
-                {entry.payload.percentage.toFixed(1)}%
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
   };
 
   const updatePercentage = (index: number, newPercentage: number) => {
@@ -164,26 +143,27 @@ export function EditablePortfolioComposition({
       
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={composition}
-              cx="50%"
-              cy="50%"
-              innerRadius={60}
-              outerRadius={100}
-              paddingAngle={2}
-              dataKey="percentage"
-            >
+          <BarChart data={composition} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <XAxis 
+              dataKey="symbol" 
+              tick={{ fontSize: 12 }}
+              tickLine={{ stroke: 'hsl(var(--border))' }}
+            />
+            <YAxis 
+              tick={{ fontSize: 12 }}
+              tickLine={{ stroke: 'hsl(var(--border))' }}
+              label={{ value: '비중 (%)', angle: -90, position: 'insideLeft' }}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="percentage" radius={[4, 4, 0, 0]}>
               {composition.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
                   fill={COLORS[index % COLORS.length]} 
                 />
               ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-            <Legend content={<CustomLegend />} />
-          </PieChart>
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       </div>
 
