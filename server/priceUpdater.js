@@ -10,7 +10,15 @@ class PriceUpdater {
     this.updateInterval = 1000; // 1초
     this.priceVariation = 0.05; // ±5% (0.95 ~ 1.05 범위)
     
-    console.log('📊 시세 업데이트 프로세스 초기화');
+    // 메모리 관리 설정
+    this.memoryThreshold = 1536 * 1024 * 1024; // 1.5GB 임계값
+    this.memoryCheckInterval = 30000; // 30초마다 체크
+    this.batchSize = 500; // 배치 크기
+    this.memoryMonitorId = null;
+    this.lastGcTime = 0;
+    this.gcCooldown = 10000; // GC 실행 간격 (10초)
+    
+    console.log('📊 시세 업데이트 프로세스 초기화 (자동 메모리 관리 포함)');
   }
 
   // 데이터베이스 연결
@@ -29,6 +37,77 @@ class PriceUpdater {
     } catch (error) {
       console.error('❌ 시세 업데이터 - 데이터베이스 연결 실패:', error.message);
       return false;
+    }
+  }
+
+  // 메모리 사용량 확인
+  getMemoryUsage() {
+    const used = process.memoryUsage();
+    return {
+      rss: used.rss,
+      heapTotal: used.heapTotal,
+      heapUsed: used.heapUsed,
+      external: used.external,
+      rssMB: Math.round(used.rss / 1024 / 1024),
+      heapTotalMB: Math.round(used.heapTotal / 1024 / 1024),
+      heapUsedMB: Math.round(used.heapUsed / 1024 / 1024)
+    };
+  }
+
+  // 가비지 컬렉션 강제 실행
+  forceGarbageCollection() {
+    const now = Date.now();
+    if (now - this.lastGcTime > this.gcCooldown) {
+      if (global.gc) {
+        global.gc();
+        this.lastGcTime = now;
+        console.log('🗑️ 가비지 컬렉션 실행됨');
+        return true;
+      } else {
+        console.warn('⚠️ 가비지 컬렉션 사용 불가 (--expose-gc 플래그 필요)');
+      }
+    }
+    return false;
+  }
+
+  // 메모리 모니터링 시작
+  startMemoryMonitoring() {
+    this.memoryMonitorId = setInterval(() => {
+      const memory = this.getMemoryUsage();
+      
+      // 메모리 사용량 로깅 (5분마다)
+      if (Date.now() % 300000 < this.memoryCheckInterval) {
+        console.log(`💾 메모리 사용량: Heap ${memory.heapUsedMB}MB / RSS ${memory.rssMB}MB`);
+      }
+      
+      // 임계값 초과 시 대응
+      if (memory.heapUsed > this.memoryThreshold) {
+        console.warn(`⚠️ 메모리 임계값 초과: ${memory.heapUsedMB}MB > ${Math.round(this.memoryThreshold / 1024 / 1024)}MB`);
+        
+        // 1. 가비지 컬렉션 실행
+        this.forceGarbageCollection();
+        
+        // 2. 업데이트 간격 조정 (임시)
+        if (this.updateInterval < 3000) {
+          console.log('🐌 메모리 절약을 위해 업데이트 간격을 늘립니다');
+          this.updateInterval = Math.min(this.updateInterval * 2, 5000);
+          this.restart();
+        }
+      } else if (memory.heapUsed < this.memoryThreshold * 0.7 && this.updateInterval > 1000) {
+        // 메모리가 안정되면 원래 간격으로 복구
+        console.log('🚀 메모리 안정화, 업데이트 간격을 줄입니다');
+        this.updateInterval = Math.max(this.updateInterval / 2, 1000);
+        this.restart();
+      }
+    }, this.memoryCheckInterval);
+  }
+
+  // 메모리 모니터링 중지
+  stopMemoryMonitoring() {
+    if (this.memoryMonitorId) {
+      clearInterval(this.memoryMonitorId);
+      this.memoryMonitorId = null;
+      console.log('🛑 메모리 모니터링 중지');
     }
   }
 
@@ -69,7 +148,7 @@ class PriceUpdater {
     }
   }
 
-  // 모든 종목 가격 업데이트
+  // 모든 종목 가격 업데이트 (메모리 최적화 버전)
   async updateAllPrices() {
     try {
       const stocks = await this.getAllStockPrices();
@@ -81,31 +160,56 @@ class PriceUpdater {
 
       let successCount = 0;
       let totalCount = stocks.length;
-      const updatePromises = [];
+      
+      // 배치 단위로 처리하여 메모리 사용량 제한
+      for (let i = 0; i < stocks.length; i += this.batchSize) {
+        const batch = stocks.slice(i, i + this.batchSize);
+        const updatePromises = [];
 
-      // 배치로 모든 종목 업데이트
-      for (const stock of stocks) {
-        const newPrice = this.calculateNewPrice(stock.current_price);
-        const promise = this.updateStockPrice(stock.stock_code, newPrice)
-          .then(success => {
-            if (success) {
-              successCount++;
-              // 변동률 계산
-              const changeRate = ((newPrice - stock.current_price) / stock.current_price * 100);
-              if (Math.abs(changeRate) > 5) { // 5% 이상 변동시만 로그
-                console.log(`📈 ${stock.stock_code}: ${stock.current_price.toLocaleString()} → ${newPrice.toLocaleString()} (${changeRate > 0 ? '+' : ''}${changeRate.toFixed(2)}%)`);
+        for (const stock of batch) {
+          const newPrice = this.calculateNewPrice(stock.current_price);
+          const promise = this.updateStockPrice(stock.stock_code, newPrice)
+            .then(success => {
+              if (success) {
+                successCount++;
+                // 변동률 계산 (5% 이상 변동시만 로그)
+                const changeRate = ((newPrice - stock.current_price) / stock.current_price * 100);
+                if (Math.abs(changeRate) > 5) {
+                  console.log(`📈 ${stock.stock_code}: ${stock.current_price.toLocaleString()} → ${newPrice.toLocaleString()} (${changeRate > 0 ? '+' : ''}${changeRate.toFixed(2)}%)`);
+                }
               }
-            }
-          });
-        updatePromises.push(promise);
-      }
+              return success;
+            })
+            .catch(error => {
+              console.error(`❌ ${stock.stock_code} 업데이트 실패:`, error.message);
+              return false;
+            });
+          updatePromises.push(promise);
+        }
 
-      await Promise.all(updatePromises);
+        // 배치 실행
+        await Promise.all(updatePromises);
+        
+        // 배치 완료 후 메모리 정리
+        updatePromises.length = 0; // 배열 정리
+        
+        // 메모리 사용량이 높으면 가비지 컬렉션 실행
+        const memory = this.getMemoryUsage();
+        if (memory.heapUsed > this.memoryThreshold * 0.8) {
+          this.forceGarbageCollection();
+        }
+        
+        // 배치 간 짧은 대기 (메모리 압박 시)
+        if (memory.heapUsed > this.memoryThreshold * 0.9) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
       
       // 주기적으로 업데이트 통계 출력 (10초마다)
       const now = Date.now();
       if (!this.lastLogTime || now - this.lastLogTime > 10000) {
-        console.log(`🔄 시세 업데이트 완료: ${successCount}/${totalCount} (${new Date().toLocaleTimeString()})`);
+        const memory = this.getMemoryUsage();
+        console.log(`🔄 시세 업데이트 완료: ${successCount}/${totalCount} (${new Date().toLocaleTimeString()}) [Heap: ${memory.heapUsedMB}MB]`);
         this.lastLogTime = now;
       }
 
@@ -129,6 +233,10 @@ class PriceUpdater {
 
     this.isRunning = true;
     console.log(`🚀 시세 업데이트 시작 (${this.updateInterval}ms 간격, 0.95~1.05배 변동)`);
+    console.log(`💾 메모리 임계값: ${Math.round(this.memoryThreshold / 1024 / 1024)}MB, 배치 크기: ${this.batchSize}`);
+
+    // 메모리 모니터링 시작
+    this.startMemoryMonitoring();
 
     // 즉시 첫 업데이트 실행
     await this.updateAllPrices();
@@ -157,6 +265,9 @@ class PriceUpdater {
       this.intervalId = null;
     }
 
+    // 메모리 모니터링 중지
+    this.stopMemoryMonitoring();
+
     if (this.connection) {
       await this.connection.end();
       this.connection = null;
@@ -167,11 +278,20 @@ class PriceUpdater {
 
   // 현재 상태 조회
   getStatus() {
+    const memory = this.getMemoryUsage();
     return {
       isRunning: this.isRunning,
       interval: this.updateInterval,
       variation: this.priceVariation,
-      connected: !!this.connection
+      connected: !!this.connection,
+      memory: {
+        heapUsedMB: memory.heapUsedMB,
+        heapTotalMB: memory.heapTotalMB,
+        rssMB: memory.rssMB,
+        thresholdMB: Math.round(this.memoryThreshold / 1024 / 1024),
+        usagePercent: Math.round((memory.heapUsed / this.memoryThreshold) * 100)
+      },
+      batchSize: this.batchSize
     };
   }
 
