@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API 테스트</title>
+</head>
+<body>
+    <h1>API 연결 테스트</h1>
+    <div id="result"></div>
+    
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                resultDiv.innerHTML = '🔄 API 테스트 중...';
+                
+                const response = await fetch('http://localhost:3001/api/balance/holdings');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h2>✅ API 연결 성공</h2>
+                    <p>보유종목 개수: ${data.length}개</p>
+                    <h3>첫 번째 종목:</h3>
+                    <pre>${JSON.stringify(data[0], null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h2>❌ API 연결 실패</h2>
+                    <p>오류: ${error.message}</p>
+                `;
+            }
+        }
+        
+        // 페이지 로드 시 API 테스트 실행
+        testAPI();
+    </script>
+</body>
+</html>

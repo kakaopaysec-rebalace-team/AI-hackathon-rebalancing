@@ -2,106 +2,97 @@ import { PortfolioSummary } from "@/components/PortfolioSummary";
 import { PortfolioCard } from "@/components/PortfolioCard";
 import { PortfolioComposition } from "@/components/PortfolioComposition";
 import { BottomNavigation } from "@/components/BottomNavigation";
-
-// Mock data for demonstration
-const mockPortfolio = {
-  totalValue: 125500000,
-  totalChange: 2850000,
-  totalChangePercent: 2.32,
-  holdings: [
-    {
-      symbol: "AAPL",
-      name: "Apple Inc.",
-      shares: 150,
-      currentPrice: 175000,
-      avgPrice: 165000,
-      totalValue: 26250000,
-      change: 1500000,
-      changePercent: 6.06
-    },
-    {
-      symbol: "TSLA", 
-      name: "Tesla, Inc.",
-      shares: 80,
-      currentPrice: 250000,
-      avgPrice: 275000,
-      totalValue: 20000000,
-      change: -2000000,
-      changePercent: -9.09
-    },
-    {
-      symbol: "NVDA",
-      name: "NVIDIA Corporation",
-      shares: 100,
-      currentPrice: 420000,
-      avgPrice: 380000,
-      totalValue: 42000000,
-      change: 4000000,
-      changePercent: 10.53
-    },
-    {
-      symbol: "AMZN",
-      name: "Amazon.com Inc.",
-      shares: 200,
-      currentPrice: 135000,
-      avgPrice: 140000,
-      totalValue: 27000000,
-      change: -1000000,
-      changePercent: -3.57
-    },
-    {
-      symbol: "GOOGL",
-      name: "Alphabet Inc.",
-      shares: 75,
-      currentPrice: 138000,
-      avgPrice: 132000,
-      totalValue: 10350000,
-      change: 450000,
-      changePercent: 4.55
-    }
-  ]
-};
+import { useBalanceData } from "@/hooks/useBalance";
+import { Card } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 
 const Index = () => {
-  // Calculate portfolio composition data
-  const compositionData = mockPortfolio.holdings.map((holding) => ({
-    symbol: holding.symbol,
-    name: holding.name,
-    value: holding.totalValue,
-    percentage: (holding.totalValue / mockPortfolio.totalValue) * 100,
+  const {
+    holdingStocks,
+    portfolioComposition,
+    totalAssets,
+    rebalancingStatus,
+    isLoading,
+    isError,
+    error
+  } = useBalanceData();
+
+  // 로딩 상태
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="p-8 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">포트폴리오 데이터를 불러오는 중...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="p-8 text-center">
+          <p className="text-destructive mb-2">데이터를 불러오는데 실패했습니다.</p>
+          <p className="text-sm text-muted-foreground">
+            {error?.message || '알 수 없는 오류가 발생했습니다.'}
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  // 포트폴리오 구성 차트 데이터 변환
+  const compositionData = portfolioComposition.data?.map((item) => ({
+    symbol: item.stockName.substring(0, 4), // 종목명에서 4글자만 표시
+    name: item.stockName,
+    value: item.value,
+    percentage: item.weight,
     color: ''
-  }));
+  })) || [];
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="p-4">
-        <PortfolioSummary
-          totalValue={mockPortfolio.totalValue}
-          totalChange={mockPortfolio.totalChange}
-          totalChangePercent={mockPortfolio.totalChangePercent}
+        {/* 총자산 섹션 */}
+        {totalAssets.data && (
+          <PortfolioSummary
+            totalValue={totalAssets.data.totalAssets}
+            totalChange={totalAssets.data.totalProfitLoss}
+            totalChangePercent={totalAssets.data.totalProfitLossRate}
+          />
+        )}
+        
+        {/* 포트폴리오 구성 섹션 */}
+        <PortfolioComposition 
+          data={compositionData}
+          rebalancingStatus={rebalancingStatus.data}
         />
         
-        <PortfolioComposition data={compositionData} />
-        
+        {/* 보유종목 섹션 */}
         <div className="mb-4">
           <h2 className="text-xl font-bold mb-4">보유 종목</h2>
-          {mockPortfolio.holdings.map((holding) => {
-            const portfolioPercent = (holding.totalValue / mockPortfolio.totalValue) * 100;
-            return (
-              <PortfolioCard
-                key={holding.symbol}
-                symbol={holding.symbol}
-                name={holding.name}
-                shares={holding.shares}
-                currentPrice={holding.currentPrice}
-                avgPrice={holding.avgPrice}
-                totalValue={holding.totalValue}
-                change={holding.change}
-                changePercent={holding.changePercent}
-                portfolioPercent={portfolioPercent}
-              />
-            );
-          })}
+          {holdingStocks.data?.map((stock) => (
+            <PortfolioCard
+              key={stock.stockCode}
+              symbol={stock.stockCode}
+              name={stock.stockName}
+              shares={stock.quantity}
+              currentPrice={stock.currentPrice}
+              avgPrice={stock.purchaseAmount / stock.quantity} // 평균매수가 계산
+              totalValue={stock.marketValue}
+              change={stock.profitLoss}
+              changePercent={stock.profitLossRate}
+              portfolioPercent={stock.weight}
+            />
+          ))}
+          
+          {holdingStocks.data?.length === 0 && (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">보유 중인 종목이 없습니다.</p>
+            </Card>
+          )}
         </div>
       </div>
       

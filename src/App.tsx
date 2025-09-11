@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
+import TestIndex from "./pages/TestIndex";
 import NotFound from "./pages/NotFound";
 import StrategyCreate from "./pages/StrategyCreate";
 import StrategyCompare from "./pages/StrategyCompare";
@@ -18,6 +19,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/test" element={<TestIndex />} />
           <Route path="/strategy-create" element={<StrategyCreate />} />
           <Route path="/strategy-compare" element={<StrategyCompare />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

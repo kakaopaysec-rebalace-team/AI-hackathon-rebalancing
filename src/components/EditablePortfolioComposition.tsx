@@ -162,18 +162,21 @@ export function EditablePortfolioComposition({
         </div>
       </div>
       
-      <div className="h-64">
+      <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={displayData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          <BarChart data={displayData} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
             <XAxis 
-              dataKey="symbol" 
-              tick={{ fontSize: 12 }}
+              dataKey="name" 
+              tick={{ fontSize: 10, angle: -45, textAnchor: 'end' }}
               tickLine={{ stroke: 'hsl(var(--border))' }}
+              height={60}
+              interval={0}
             />
             <YAxis 
               tick={{ fontSize: 12 }}
               tickLine={{ stroke: 'hsl(var(--border))' }}
               label={{ value: '비중 (%)', angle: -90, position: 'insideLeft' }}
+              domain={[0, 100]}
             />
             <Tooltip content={<CustomTooltip />} />
             <Bar dataKey="percentage" radius={[4, 4, 0, 0]}>
