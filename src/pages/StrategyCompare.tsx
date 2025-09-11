@@ -294,26 +294,34 @@ const StrategyCompare = () => {
         </Card>
 
         {/* 상세 분석 버튼 */}
-        {selectedStrategy && (
-          <Button 
-            onClick={() => analyzeStrategy(selectedStrategy)}
-            disabled={isAnalyzing}
-            className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 mb-6"
-            size="lg"
-          >
-            {isAnalyzing ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                분석 중...
-              </div>
-            ) : (
-              <>
-                <BarChart3 className="w-5 h-5 mr-2" />
-                상세 분석 보기
-              </>
-            )}
-          </Button>
-        )}
+        <Button 
+          onClick={() => {
+            if (!selectedStrategy) {
+              toast({
+                title: "포트폴리오를 선택해주세요",
+                description: "상세 분석을 보려면 먼저 포트폴리오를 선택한 후 분석 버튼을 눌러주세요.",
+                variant: "destructive",
+              });
+              return;
+            }
+            analyzeStrategy(selectedStrategy);
+          }}
+          disabled={isAnalyzing}
+          className="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 mb-6"
+          size="lg"
+        >
+          {isAnalyzing ? (
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              분석 중...
+            </div>
+          ) : (
+            <>
+              <BarChart3 className="w-5 h-5 mr-2" />
+              상세 분석 보기
+            </>
+          )}
+        </Button>
 
         {/* 분석 결과 */}
         {analysisResult && selectedStrategy && (

@@ -10,13 +10,20 @@ const {
   updateRebalancingStatus,
   getMasterStrategies,
   saveCustomerStrategy,
-  getCustomerStrategy
+  getCustomerStrategy,
+  getCurrentPrices
 } = require('./database');
+
+// 시세 업데이트 프로세스
+const PriceUpdater = require('./priceUpdater');
 
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// 시세 업데이트 인스턴스 생성
+const priceUpdater = new PriceUpdater();
 
 // 미들웨어 설정
 app.use(cors());
@@ -32,10 +39,18 @@ app.use((req, res, next) => {
 // 헬스체크 엔드포인트
 app.get('/health', async (req, res) => {
   const dbConnected = await testConnection();
+  const priceUpdaterStatus = priceUpdater.getStatus();
+  
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
     database: dbConnected ? 'Connected' : 'Disconnected',
+    priceUpdater: {
+      running: priceUpdaterStatus.isRunning,
+      interval: `${priceUpdaterStatus.interval}ms`,
+      variation: `${(1 - priceUpdaterStatus.variation).toFixed(2)}~${(1 + priceUpdaterStatus.variation).toFixed(2)}x`,
+      connected: priceUpdaterStatus.connected
+    },
     environment: process.env.NODE_ENV || 'development'
   });
 });
@@ -319,7 +334,139 @@ balanceRouter.get('/strategies/customer', async (req, res) => {
   }
 });
 
-// 잔고 라우터 등록
+// 현재 시세 조회 (실시간 업데이트용)
+balanceRouter.post('/current-prices', async (req, res) => {
+  try {
+    const { stockCodes } = req.body;
+    
+    if (!stockCodes || !Array.isArray(stockCodes)) {
+      return res.status(400).json({
+        success: false,
+        error: '종목코드 배열이 필요합니다.',
+        example: { stockCodes: ["005930", "000660", "035420"] }
+      });
+    }
+
+    const result = await getCurrentPrices(stockCodes);
+    
+    if (result.success) {
+      res.json(result.data);
+    } else {
+      res.status(500).json({
+        error: result.error,
+        details: result.details
+      });
+    }
+  } catch (error) {
+    console.error('현재 시세 조회 API 오류:', error);
+    res.status(500).json({
+      error: '서버 내부 오류가 발생했습니다.',
+      details: error.message
+    });
+  }
+});
+
+// 시세 관리 API 라우트
+const priceRouter = express.Router();
+
+// 시세 업데이터 상태 조회
+priceRouter.get('/status', (req, res) => {
+  const status = priceUpdater.getStatus();
+  res.json({
+    success: true,
+    data: status,
+    message: `시세 업데이터가 ${status.isRunning ? '실행 중' : '중지된 상태'}입니다`
+  });
+});
+
+// 시세 업데이터 시작
+priceRouter.post('/start', async (req, res) => {
+  try {
+    const started = await priceUpdater.start();
+    if (started) {
+      res.json({
+        success: true,
+        message: '시세 업데이터가 시작되었습니다',
+        data: priceUpdater.getStatus()
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: '시세 업데이터를 시작할 수 없습니다 (이미 실행 중이거나 연결 실패)'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '시세 업데이터 시작 중 오류가 발생했습니다',
+      error: error.message
+    });
+  }
+});
+
+// 시세 업데이터 중지
+priceRouter.post('/stop', async (req, res) => {
+  try {
+    await priceUpdater.stop();
+    res.json({
+      success: true,
+      message: '시세 업데이터가 중지되었습니다',
+      data: priceUpdater.getStatus()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '시세 업데이터 중지 중 오류가 발생했습니다',
+      error: error.message
+    });
+  }
+});
+
+// 시세 업데이터 재시작
+priceRouter.post('/restart', async (req, res) => {
+  try {
+    await priceUpdater.restart();
+    res.json({
+      success: true,
+      message: '시세 업데이터가 재시작되었습니다',
+      data: priceUpdater.getStatus()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '시세 업데이터 재시작 중 오류가 발생했습니다',
+      error: error.message
+    });
+  }
+});
+
+// 시세 업데이터 설정 변경
+priceRouter.put('/config', (req, res) => {
+  try {
+    const { interval, variation } = req.body;
+    
+    const config = {};
+    if (interval !== undefined) config.interval = interval;
+    if (variation !== undefined) config.variation = variation;
+    
+    priceUpdater.updateConfig(config);
+    
+    res.json({
+      success: true,
+      message: '시세 업데이터 설정이 변경되었습니다',
+      data: priceUpdater.getStatus()
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: '시세 업데이터 설정 변경 중 오류가 발생했습니다',
+      error: error.message
+    });
+  }
+});
+
+// 라우터 등록
+app.use('/api/price', priceRouter);
 app.use('/api/balance', balanceRouter);
 
 // 404 핸들러
@@ -334,7 +481,13 @@ app.use((req, res) => {
       'GET /api/balance/total-assets',
       'GET /api/balance/rebalancing',
       'PUT /api/balance/rebalancing',
-      'GET /api/balance/all'
+      'POST /api/balance/current-prices',
+      'GET /api/balance/all',
+      'GET /api/price/status',
+      'POST /api/price/start',
+      'POST /api/price/stop',
+      'POST /api/price/restart',
+      'PUT /api/price/config'
     ]
   });
 });
@@ -360,6 +513,16 @@ app.listen(PORT, async () => {
   const dbConnected = await testConnection();
   
   if (dbConnected) {
+    // 시세 업데이터 자동 시작
+    console.log('\n📈 시세 업데이터 시작 중...');
+    const priceUpdaterStarted = await priceUpdater.start();
+    
+    if (priceUpdaterStarted) {
+      console.log('✅ 시세 업데이터가 정상적으로 시작되었습니다!');
+    } else {
+      console.log('⚠️  시세 업데이터 시작에 실패했습니다.');
+    }
+    
     console.log('✅ 모든 시스템이 정상적으로 시작되었습니다!');
     console.log('\n📋 사용 가능한 API 엔드포인트:');
     console.log('  GET  /health                     - 헬스체크');
@@ -369,7 +532,14 @@ app.listen(PORT, async () => {
     console.log('  GET  /api/balance/total-assets   - 총자산 조회');
     console.log('  GET  /api/balance/rebalancing    - 리밸런싱 상태');
     console.log('  PUT  /api/balance/rebalancing    - 리밸런싱 업데이트');
+    console.log('  POST /api/balance/current-prices - 현재 시세 조회');
     console.log('  GET  /api/balance/all            - 모든 데이터 조회');
+    console.log('\n📈 시세 관리 API:');
+    console.log('  GET  /api/price/status           - 시세 업데이터 상태');
+    console.log('  POST /api/price/start            - 시세 업데이터 시작');
+    console.log('  POST /api/price/stop             - 시세 업데이터 중지');
+    console.log('  POST /api/price/restart          - 시세 업데이터 재시작');
+    console.log('  PUT  /api/price/config           - 시세 업데이터 설정');
   } else {
     console.log('⚠️  데이터베이스 연결에 실패했지만 서버는 시작되었습니다.');
   }
@@ -379,12 +549,18 @@ app.listen(PORT, async () => {
 });
 
 // 프로세스 종료 시 정리 작업
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('\n🛑 서버를 종료하는 중...');
+  console.log('📈 시세 업데이터 중지 중...');
+  await priceUpdater.stop();
+  console.log('✅ 모든 프로세스가 정상적으로 종료되었습니다.');
   process.exit(0);
 });
 
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('\n🛑 서버를 종료하는 중...');
+  console.log('📈 시세 업데이터 중지 중...');
+  await priceUpdater.stop();
+  console.log('✅ 모든 프로세스가 정상적으로 종료되었습니다.');
   process.exit(0);
 });

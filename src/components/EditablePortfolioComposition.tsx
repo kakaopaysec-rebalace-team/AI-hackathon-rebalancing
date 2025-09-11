@@ -44,8 +44,8 @@ export function EditablePortfolioComposition({
       const data = payload[0].payload;
       return (
         <div className="bg-card p-3 rounded-lg shadow-card border">
-          <p className="font-semibold">{data.symbol}</p>
-          <p className="text-sm text-muted-foreground">{data.name}</p>
+          <p className="font-semibold">{data.name}</p>
+          <p className="text-sm text-muted-foreground">{data.symbol}</p>
           <p className="text-primary font-medium">
             {data.percentage.toFixed(1)}%
           </p>
@@ -197,7 +197,7 @@ export function EditablePortfolioComposition({
           {tempData.map((item, index) => (
             <div key={item.symbol} className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">{item.symbol}</Label>
+                <Label className="text-sm font-medium">{item.name}</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     type="number"

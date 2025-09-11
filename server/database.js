@@ -353,6 +353,45 @@ async function getCustomerStrategy() {
   }
 }
 
+// 현재 시세 조회 (여러 종목)
+async function getCurrentPrices(stockCodes) {
+  try {
+    if (!stockCodes || stockCodes.length === 0) {
+      return { success: false, error: '조회할 종목코드가 없습니다.' };
+    }
+
+    const placeholders = stockCodes.map(() => '?').join(',');
+    const query = `
+      SELECT stock_code, current_price 
+      FROM stock_current_price 
+      WHERE stock_code IN (${placeholders})
+      ORDER BY stock_code
+    `;
+
+    const [rows] = await pool.execute(query, stockCodes);
+    
+    // 결과를 객체 형태로 변환 { "종목코드": 현재가 }
+    const pricesMap = {};
+    rows.forEach(row => {
+      pricesMap[row.stock_code] = row.current_price;
+    });
+
+    return { 
+      success: true, 
+      data: pricesMap,
+      message: `${rows.length}개 종목의 현재 시세를 조회했습니다.`
+    };
+
+  } catch (error) {
+    console.error('현재 시세 조회 실패:', error);
+    return { 
+      success: false, 
+      error: '현재 시세 조회에 실패했습니다.', 
+      details: error.message 
+    };
+  }
+}
+
 module.exports = {
   testConnection,
   getHoldingStocks,
@@ -362,5 +401,6 @@ module.exports = {
   getMasterStrategies,
   saveCustomerStrategy,
   getCustomerStrategy,
+  getCurrentPrices,
   pool
 };

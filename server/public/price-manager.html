@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시세 관리 - 포트폴리오 시스템</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .status-card {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .status-item:last-child {
+            border-bottom: none;
+        }
+        .status-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .status-value {
+            color: #007bff;
+        }
+        .running {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .stopped {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #1e7e34;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+        .config-section {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .config-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 10px 0;
+        }
+        .config-row label {
+            min-width: 120px;
+            font-weight: bold;
+        }
+        .config-row input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            width: 150px;
+        }
+        .logs {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            margin: 20px 0;
+        }
+        .timestamp {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📈 실시간 시세 관리자</h1>
+        
+        <!-- 현재 상태 -->
+        <div class="status-card">
+            <h3>⚡ 현재 상태</h3>
+            <div class="status-item">
+                <span class="status-label">시세 업데이터:</span>
+                <span id="status-running" class="status-value">확인 중...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">업데이트 간격:</span>
+                <span id="status-interval" class="status-value">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">가격 변동폭:</span>
+                <span id="status-variation" class="status-value">-</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">데이터베이스:</span>
+                <span id="status-connected" class="status-value">-</span>
+            </div>
+        </div>
+
+        <!-- 컨트롤 버튼 -->
+        <div class="button-group">
+            <button class="btn-success" onclick="startUpdater()">🚀 시작</button>
+            <button class="btn-danger" onclick="stopUpdater()">🛑 중지</button>
+            <button class="btn-warning" onclick="restartUpdater()">🔄 재시작</button>
+            <button class="btn-primary" onclick="checkStatus()">📊 상태 확인</button>
+        </div>
+
+        <!-- 설정 변경 -->
+        <div class="config-section">
+            <h3>⚙️ 설정 변경</h3>
+            <div class="config-row">
+                <label>업데이트 간격 (ms):</label>
+                <input type="number" id="config-interval" value="1000" min="100" step="100">
+                <small>(최소 100ms)</small>
+            </div>
+            <div class="config-row">
+                <label>가격 변동폭 (%):</label>
+                <input type="number" id="config-variation" value="5" min="1" max="50" step="1">
+                <small>(1% ~ 50%, 0.95~1.05배)</small>
+            </div>
+            <div class="config-row">
+                <button class="btn-primary" onclick="updateConfig()">💾 설정 저장</button>
+            </div>
+        </div>
+
+        <!-- 실시간 로그 -->
+        <div class="logs" id="logs">시세 관리자가 시작되었습니다...\n</div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let statusInterval;
+
+        // 로그 추가 함수
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('logs');
+            const colors = {
+                info: '#0f0',
+                success: '#0a0',
+                error: '#f00',
+                warning: '#fa0'
+            };
+            
+            logElement.innerHTML += `<span class="timestamp">[${timestamp}]</span> <span style="color: ${colors[type]}">${message}</span>\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        // 상태 확인
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/price/status`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStatusDisplay(data.data);
+                    addLog(`상태 확인: ${data.message}`, 'success');
+                } else {
+                    addLog(`상태 확인 실패: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                addLog(`상태 확인 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 상태 표시 업데이트
+        function updateStatusDisplay(status) {
+            document.getElementById('status-running').textContent = status.isRunning ? '실행 중' : '중지됨';
+            document.getElementById('status-running').className = status.isRunning ? 'status-value running' : 'status-value stopped';
+            
+            document.getElementById('status-interval').textContent = `${status.interval}ms`;
+            document.getElementById('status-variation').textContent = `±${(status.variation * 100).toFixed(1)}%`;
+            document.getElementById('status-connected').textContent = status.connected ? '연결됨' : '연결 안됨';
+        }
+
+        // 시세 업데이터 시작
+        async function startUpdater() {
+            try {
+                const response = await fetch(`${API_BASE}/api/price/start`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStatusDisplay(data.data);
+                    addLog(data.message, 'success');
+                } else {
+                    addLog(`시작 실패: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                addLog(`시작 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 시세 업데이터 중지
+        async function stopUpdater() {
+            try {
+                const response = await fetch(`${API_BASE}/api/price/stop`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStatusDisplay(data.data);
+                    addLog(data.message, 'success');
+                } else {
+                    addLog(`중지 실패: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                addLog(`중지 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 시세 업데이터 재시작
+        async function restartUpdater() {
+            try {
+                const response = await fetch(`${API_BASE}/api/price/restart`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStatusDisplay(data.data);
+                    addLog(data.message, 'success');
+                } else {
+                    addLog(`재시작 실패: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                addLog(`재시작 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 설정 업데이트
+        async function updateConfig() {
+            const interval = parseInt(document.getElementById('config-interval').value);
+            const variation = parseFloat(document.getElementById('config-variation').value) / 100;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/price/config`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        interval: interval,
+                        variation: variation
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStatusDisplay(data.data);
+                    addLog(data.message, 'success');
+                } else {
+                    addLog(`설정 변경 실패: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                addLog(`설정 변경 오류: ${error.message}`, 'error');
+            }
+        }
+
+        // 페이지 로드 시 초기 상태 확인
+        window.onload = function() {
+            addLog('시세 관리 페이지가 로드되었습니다.', 'info');
+            checkStatus();
+            
+            // 3초마다 자동으로 상태 확인
+            statusInterval = setInterval(checkStatus, 3000);
+        };
+
+        // 페이지 언로드 시 인터벌 정리
+        window.onbeforeunload = function() {
+            if (statusInterval) {
+                clearInterval(statusInterval);
+            }
+        };
+    </script>
+</body>
+</html>
