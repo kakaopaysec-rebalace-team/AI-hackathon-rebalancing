@@ -86,9 +86,9 @@ sudo mysql -u root -p
 
 MariaDB 프롬프트에서:
 ```sql
-CREATE DATABASE port_tune_up CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'portfolio_user'@'localhost' IDENTIFIED BY 'portfolio_password123!';
-GRANT ALL PRIVILEGES ON port_tune_up.* TO 'portfolio_user'@'localhost';
+CREATE DATABASE kpsdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'rebalance'@'localhost' IDENTIFIED BY 'Kakaopay2025!';
+GRANT ALL PRIVILEGES ON kpsdb.* TO 'rebalance'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
 ```
@@ -128,16 +128,16 @@ EOF
 ```bash
 cat > server/.env << 'EOF'
 DB_HOST=localhost
-DB_USER=portfolio_user
-DB_PASSWORD=portfolio_password123!
-DB_NAME=port_tune_up
+DB_USER=rebalance
+DB_PASSWORD=Kakaopay2025!
+DB_NAME=kpsdb
 PORT=3001
 EOF
 ```
 
 ### 2. 데이터베이스 스키마 및 데이터 생성
 ```bash
-mysql -u portfolio_user -p port_tune_up < database/complete_7table_database_setup.sql
+mysql -u rebalance -p kpsdb < database/complete_7table_database_setup.sql
 ```
 
 패스워드 입력: `portfolio_password123!`
