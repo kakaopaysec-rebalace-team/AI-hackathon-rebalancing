@@ -18,6 +18,9 @@ class PriceUpdater {
     this.lastGcTime = 0;
     this.gcCooldown = 10000; // GC 실행 간격 (10초)
     
+    // 업데이트 제외 종목 리스트 (수동 관리용)
+    this.excludedStocks = new Set(); // 종목코드로 관리
+    
     console.log('📊 시세 업데이트 프로세스 초기화 (자동 메모리 관리 포함)');
   }
 
@@ -167,6 +170,12 @@ class PriceUpdater {
         const updatePromises = [];
 
         for (const stock of batch) {
+          // 제외 목록에 있는 종목은 스킵
+          if (this.excludedStocks.has(stock.stock_code)) {
+            successCount++; // 제외된 종목도 성공으로 카운트
+            continue;
+          }
+          
           const newPrice = this.calculateNewPrice(stock.current_price);
           const promise = this.updateStockPrice(stock.stock_code, newPrice)
             .then(success => {
@@ -318,6 +327,27 @@ class PriceUpdater {
     console.log('🔄 시세 업데이트 재시작');
     await this.stop();
     setTimeout(() => this.start(), 1000);
+  }
+
+  // 종목을 업데이트 제외 목록에 추가
+  excludeStock(stockCode) {
+    this.excludedStocks.add(stockCode);
+    console.log(`🚫 종목 ${stockCode}을 시세 업데이트에서 제외했습니다`);
+    return true;
+  }
+
+  // 종목을 업데이트 제외 목록에서 제거
+  includeStock(stockCode) {
+    const removed = this.excludedStocks.delete(stockCode);
+    if (removed) {
+      console.log(`✅ 종목 ${stockCode}을 시세 업데이트에 다시 포함했습니다`);
+    }
+    return removed;
+  }
+
+  // 제외된 종목 목록 조회
+  getExcludedStocks() {
+    return Array.from(this.excludedStocks);
   }
 }
 

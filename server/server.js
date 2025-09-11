@@ -465,6 +465,82 @@ priceRouter.put('/config', (req, res) => {
   }
 });
 
+// 종목 업데이트 제외 관리 API
+priceRouter.post('/exclude', (req, res) => {
+  try {
+    const { stockCode } = req.body;
+    
+    if (!stockCode) {
+      return res.status(400).json({
+        success: false,
+        message: '종목코드가 필요합니다'
+      });
+    }
+    
+    priceUpdater.excludeStock(stockCode);
+    
+    res.json({
+      success: true,
+      message: `종목 ${stockCode}을 시세 업데이트에서 제외했습니다`,
+      excludedStocks: priceUpdater.getExcludedStocks()
+    });
+  } catch (error) {
+    console.error('종목 제외 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '종목 제외에 실패했습니다',
+      error: error.message
+    });
+  }
+});
+
+priceRouter.post('/include', (req, res) => {
+  try {
+    const { stockCode } = req.body;
+    
+    if (!stockCode) {
+      return res.status(400).json({
+        success: false,
+        message: '종목코드가 필요합니다'
+      });
+    }
+    
+    const removed = priceUpdater.includeStock(stockCode);
+    
+    res.json({
+      success: true,
+      message: removed 
+        ? `종목 ${stockCode}을 시세 업데이트에 다시 포함했습니다`
+        : `종목 ${stockCode}은 이미 업데이트 대상입니다`,
+      excludedStocks: priceUpdater.getExcludedStocks()
+    });
+  } catch (error) {
+    console.error('종목 포함 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '종목 포함에 실패했습니다',
+      error: error.message
+    });
+  }
+});
+
+priceRouter.get('/excluded', (req, res) => {
+  try {
+    res.json({
+      success: true,
+      data: priceUpdater.getExcludedStocks(),
+      message: '제외된 종목 목록'
+    });
+  } catch (error) {
+    console.error('제외 목록 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '제외 목록 조회에 실패했습니다',
+      error: error.message
+    });
+  }
+});
+
 // 라우터 등록
 app.use('/api/price', priceRouter);
 app.use('/api/balance', balanceRouter);
