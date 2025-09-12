@@ -392,6 +392,51 @@ async function getCurrentPrices(stockCodes) {
   }
 }
 
+// 전략학습 목록 조회
+async function getStrategyLearningList() {
+  try {
+    const query = `
+      SELECT 
+        rebalancing_strategy_code as strategy_code,
+        rebalancing_name as strategy_name,
+        rebalancing_description as description,
+        risk_level,
+        investment_style,
+        keyword1,
+        keyword2,
+        keyword3,
+        is_applied,
+        created_at,
+        updated_at
+      FROM strategy_learning
+      ORDER BY created_at DESC
+    `;
+
+    const [rows] = await pool.execute(query);
+    
+    // 전략 타입을 코드에서 추출 (예: USR_405737 -> USR)
+    const dataWithType = rows.map(row => ({
+      ...row,
+      type: row.strategy_code.split('_')[0] || 'UNKNOWN',
+      status: row.is_applied === 'Y' ? '적용됨' : '완료',
+      createdAt: new Date(row.created_at).toLocaleString('ko-KR')
+    }));
+
+    return {
+      success: true,
+      data: dataWithType
+    };
+
+  } catch (error) {
+    console.error('전략학습 목록 조회 오류:', error);
+    return {
+      success: false,
+      error: '전략학습 목록을 불러올 수 없습니다.',
+      details: error.message
+    };
+  }
+}
+
 module.exports = {
   testConnection,
   getHoldingStocks,
@@ -402,5 +447,6 @@ module.exports = {
   saveCustomerStrategy,
   getCustomerStrategy,
   getCurrentPrices,
+  getStrategyLearningList,
   pool
 };
