@@ -78,7 +78,18 @@ const StrategyCreate = () => {
       try {
         const response = await fetch(`${import.meta.env.VITE_API_URL}/balance/strategies/customer`);
         const data = await response.json();
+        console.log('🔍 고객 전략 API 응답:', data);
+        console.log('🔍 리밸런싱 주기:', data.rebalancing_cycle);
+        console.log('🔍 허용편차:', data.allowed_deviation);
         setCustomerStrategy(data);
+        
+        // 저장된 전략의 리밸런싱 설정을 UI에 반영
+        if (data.rebalancing_cycle) {
+          setRebalancingCycle(data.rebalancing_cycle);
+        }
+        if (data.allowed_deviation) {
+          setAllowedDeviation(parseFloat(data.allowed_deviation));
+        }
       } catch (error) {
         console.error('고객 전략 로드 오류:', error);
         setCustomerStrategy(null);
@@ -156,7 +167,16 @@ const StrategyCreate = () => {
         // 전략 저장 후 고객 전략 다시 로드
         const customerResponse = await fetch(`${import.meta.env.VITE_API_URL}/balance/strategies/customer`);
         const customerData = await customerResponse.json();
+        console.log('💾 전략 저장 후 reload - 고객 전략 데이터:', customerData);
         setCustomerStrategy(customerData);
+        
+        // 저장된 설정을 상태에 동기화
+        if (customerData.rebalancing_cycle) {
+          setRebalancingCycle(customerData.rebalancing_cycle);
+        }
+        if (customerData.allowed_deviation) {
+          setAllowedDeviation(parseFloat(customerData.allowed_deviation));
+        }
         
         toast({
           title: "전략이 저장되었습니다",
@@ -656,12 +676,19 @@ const StrategyCreate = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="p-4">
-        <h1 className="text-2xl font-bold mb-6 text-center">리밸런싱 전략 생성</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center">리밸런싱 전략 선택</h1>
         
         <div className={`transition-all duration-300 ${isAnimating ? 'pointer-events-none opacity-75' : ''}`}>
           <EditablePortfolioComposition 
             data={composition}
             onCompositionChange={handleCompositionChange}
+            rebalancingCycle={rebalancingCycle}
+            allowedDeviation={allowedDeviation}
+            onRebalancingSettingsChange={(cycle, deviation) => {
+              console.log('📊 StrategyCreate - 리밸런싱 설정 변경:', { cycle, deviation });
+              setRebalancingCycle(cycle);
+              setAllowedDeviation(deviation);
+            }}
           />
           
           {/* 현재 선택된 전략 상태 표시 */}
@@ -800,7 +827,7 @@ const StrategyCreate = () => {
               <div>
                 <h3 className="font-semibold text-secondary-foreground">편집 중인 포트폴리오</h3>
                 <p className="text-sm text-muted-foreground">
-                  총 {composition.length}개 종목, 비중 합계: {composition.reduce((sum, item) => sum + item.percentage, 0).toFixed(1)}%
+                  총 {composition.length}개 종목, 비중 합계: 100.0%
                 </p>
               </div>
             </div>
@@ -817,7 +844,7 @@ const StrategyCreate = () => {
                   전략 적용 중...
                 </div>
               ) : (
-                <>💾 전략 저장하기</>
+                <>💾 전략 선택하기</>
               )}
             </Button>
           </Card>

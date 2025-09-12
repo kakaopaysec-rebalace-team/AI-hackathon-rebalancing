@@ -8,6 +8,9 @@ import TestIndex from "./pages/TestIndex";
 import NotFound from "./pages/NotFound";
 import StrategyCreate from "./pages/StrategyCreate";
 import StrategyCompare from "./pages/StrategyCompare";
+import StrategyLearning from "./pages/admin/StrategyLearning";
+import StrategyDetail from "./pages/admin/StrategyDetail";
+import PortfolioManagement from "./pages/admin/PortfolioManagement";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +25,9 @@ const App = () => (
           <Route path="/test" element={<TestIndex />} />
           <Route path="/strategy-create" element={<StrategyCreate />} />
           <Route path="/strategy-compare" element={<StrategyCompare />} />
+          <Route path="/admin/strategy-learning" element={<StrategyLearning />} />
+          <Route path="/admin/strategy-detail/:strategyCode" element={<StrategyDetail />} />
+          <Route path="/admin/portfolio-management" element={<PortfolioManagement />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

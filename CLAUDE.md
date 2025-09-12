@@ -1,65 +1,186 @@
 # CLAUDE.md
 
-이 파일은 Claude Code (claude.ai/code)가 이 저장소에서 코드 작업을 할 때 참고할 가이드를 제공합니다.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 개발 명령어
+## Development Commands
 
-- **개발 서버 시작**: `npm run dev` (포트 8080에서 실행)
-- **프로덕션 빌드**: `npm run build`
-- **개발용 빌드**: `npm run build:dev`
-- **코드 린트**: `npm run lint`
-- **프로덕션 빌드 미리보기**: `npm run preview`
+### Frontend (React/Vite)
+- **Development server**: `npm run dev` (runs on port 5173, configured to bind to all interfaces)
+- **Production build**: `npm run build`
+- **Development build**: `npm run build:dev`
+- **Lint code**: `npm run lint`
+- **Preview build**: `npm run preview`
 
-## 아키텍처 개요
+### Backend (Node.js/Express)
+- **Start backend server**: `npm run server` (runs on port 3001)
+- **Start with memory optimization**: `npm run server:memory` (4GB max heap size with GC exposure)
+- **Development with auto-reload**: `cd server && npm run dev` (nodemon)
 
-Vite, TypeScript, shadcn/ui 컴포넌트로 구축된 React 기반 포트폴리오 관리 애플리케이션입니다. 한국 시장 중심의 포트폴리오 관리 및 전략 분석에 특화되어 있습니다.
+### Full Stack Development
+Both frontend and backend must run simultaneously:
+1. `npm run dev` (frontend on port 5173)
+2. `npm run server` (backend on port 3001)
 
-### 핵심 구조
+## Architecture Overview
 
-- **React SPA**: React Router를 사용한 네비게이션
-- **상태 관리**: 서버 상태는 React Query (@tanstack/react-query), 로컬 상태는 React 훅 사용
-- **UI 프레임워크**: Radix UI 기반의 shadcn/ui 컴포넌트와 Tailwind CSS
-- **차트**: 데이터 시각화를 위한 Recharts 라이브러리
-- **폼**: Zod 유효성 검사가 포함된 React Hook Form
+This is a full-stack Korean stock portfolio management system with AI-powered strategy learning capabilities. The application consists of a React SPA frontend and a Node.js/Express backend with MariaDB database integration.
 
-### 주요 페이지 및 기능
+### System Architecture
 
-1. **메인 페이지 (/)**: 보유 종목, 구성 차트, 요약을 보여주는 포트폴리오 대시보드
-2. **전략 생성 (/strategy-create)**: 투자 전략 생성을 위한 편집 가능한 포트폴리오 구성 인터페이스
-3. **전략 비교 (/strategy-compare)**: 고객 프로필과 포트폴리오 전략을 비교 분석하는 위험도 평가 페이지
+**Frontend (React SPA)**:
+- Vite + TypeScript + shadcn/ui components + Tailwind CSS
+- React Router for navigation, React Query for server state management
+- Real-time stock price updates and portfolio analytics
+- Korean language UI with responsive mobile-first design
 
-### 컴포넌트 아키텍처
+**Backend (Node.js/Express API)**:
+- RESTful API server with CORS enabled
+- Real-time stock price simulation with automatic updates
+- AI strategy learning system with multiple generation methods
+- File upload support via Multer for document analysis
 
-- **UI 컴포넌트**: `src/components/ui/`에 위치 - 재사용 가능한 shadcn/ui 컴포넌트
-- **도메인 컴포넌트**: `src/components/`에 위치 - 포트폴리오 전용 컴포넌트:
-  - `PortfolioSummary`: 총 가치 및 변동 표시
-  - `PortfolioCard`: 개별 보유 종목 카드
-  - `PortfolioComposition`: 자산 배분을 보여주는 파이 차트
-  - `EditablePortfolioComposition`: 인터랙티브 구성 편집기
-  - `BottomNavigation`: 모바일 우선 네비게이션
+**Database (MariaDB)**:
+- Portfolio holdings, trading history, and customer data
+- Real-time stock prices with automatic updates
+- Strategy learning and rebalancing configurations
+- Comprehensive mock data for ~200 Korean stocks
 
-### 데이터 패턴
+### Key Backend Components
 
-현재 앱에서 사용하는 목 데이터 구조:
-- 한국 주식을 포함한 포트폴리오 보유 종목 (AAPL, TSLA, NVDA, AMZN, GOOGL)
-- 최소 통화 단위로 저장된 가치 (예: 175000 = 1,750원)
-- 고객 위험 프로필 및 전략 매칭 점수
-- 포트폴리오 구성 비율 및 리밸런싱 데이터
+**Core Modules**:
+- `server/server.js`: Main Express server with API routing
+- `server/database.js`: Database connection pool and query functions
+- `server/priceUpdater.js`: Real-time stock price simulation engine
 
-### 스타일링 및 테마
+**Price Update System**:
+- Automatic price updates every 1000ms with 0.95-1.05x variation
+- Memory management with configurable thresholds and batch processing
+- Supports start/stop/restart via API endpoints
 
-- **Tailwind CSS**: 커스텀 설정 포함
-- **CSS 변수**: next-themes를 통한 테마 지원
-- **모바일 우선** 반응형 디자인
-- UI 텍스트의 한국어 지원
+**Strategy Learning System**:
+Four AI strategy generation methods:
+1. **User Input (USR)**: Text-based strategy generation
+2. **Website Analysis (WEB)**: URL content analysis 
+3. **Document Analysis (DOC)**: File upload processing (PDF, DOC, TXT, PPT)
+4. **Automatic Generation (AUTO)**: Market analysis-based generation
 
-### 경로 별칭
+Each method generates mock strategies with realistic parameters and stores them in `strategy_learning` table.
 
-깔끔한 import를 위해 `src/` 디렉토리를 가리키는 `@/` 별칭 사용.
+### Database Schema
 
-### 개발 참고사항
+**Core Tables**:
+- `customer_balance`: Portfolio holdings with quantities and purchase amounts
+- `stock_current_price`: Real-time stock prices (~2500 Korean stocks)
+- `trading_history`: Complete trading records with buy/sell history
+- `customer_strategy`: User's rebalancing strategy configuration
+- `rebalancing_master`: Pre-defined investment strategies (15 types)
+- `strategy_learning`: AI-generated strategies with application status
 
-- TypeScript 지원 및 React hooks 규칙이 포함된 ESLint 설정
-- 사용하지 않는 변수 경고 비활성화 (`@typescript-eslint/no-unused-vars: "off"`)
-- 개발 모드에서 lovable-tagger를 통한 컴포넌트 태깅 활성화
-- 포트 8080의 모든 인터페이스(`host: "::"`)에 바인딩되도록 서버 설정
+**Key Relationships**:
+- Customer balance linked to current prices for real-time valuation
+- Trading history maintains audit trail for all transactions
+- Strategy learning system allows promoting strategies to master list
+
+### API Architecture
+
+**Balance Management** (`/api/balance/*`):
+- `/holdings`: Portfolio positions with P&L calculation
+- `/deposit`: Customer cash deposits
+- `/rebalancing`: Strategy status and configuration
+- `/all`: Complete portfolio summary
+
+**Strategy Learning** (`/api/strategy-learning/*`):
+- `/generate/user-input`: Text-based strategy creation
+- `/generate/website`: URL analysis with validation
+- `/generate/document`: Multi-file upload with type checking
+- `/generate/auto`: Automated market-based generation
+- `/apply/{code}`: Promote learning strategy to master list
+
+**Price Management** (`/api/price/*`):
+- `/status`: Price updater system status
+- `/start`, `/stop`, `/restart`: Price update control
+- `/config`: Update interval and variation configuration
+
+### Development Patterns
+
+**Database Operations**:
+- Connection pooling with mysql2/promise
+- Async/await pattern throughout
+- Transaction support for multi-table operations
+- Error handling with detailed logging
+
+**File Handling**:
+- Multer middleware for multipart form uploads
+- File type validation and size limits
+- Memory storage for temporary processing
+
+**API Design**:
+- Consistent JSON response format with success/error states
+- Request logging middleware for debugging
+- CORS configured for cross-origin frontend access
+
+### Frontend-Backend Integration
+
+**Data Flow**:
+- React Query manages server state with automatic caching
+- Real-time updates via polling (price data)
+- Form handling with React Hook Form + Zod validation
+- File uploads using FormData for document analysis
+
+**State Management**:
+- Server state: React Query (@tanstack/react-query)
+- Local state: React hooks (useState, useEffect)
+- Form state: React Hook Form with Zod schemas
+
+### Environment Configuration
+
+**Required Environment Variables** (`.env`):
+```
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=your_username  
+DB_PASSWORD=your_password
+DB_NAME=kpsdb
+ACCOUNT_NUMBER=99911122222
+```
+
+**Database Setup**:
+1. Create MariaDB database: `CREATE DATABASE kpsdb;`
+2. Run schema: `source database/create_tables_only.sql`
+3. Insert data: `source database/complete_database_setup.sql`
+
+### Key Pages and Features
+
+1. **Portfolio Dashboard (/)**: Real-time holdings, composition charts, P&L summary
+2. **Strategy Creation (/strategy-create)**: Interactive portfolio builder with rebalancing
+3. **Strategy Comparison (/strategy-compare)**: Risk assessment and strategy analysis
+4. **Admin Pages**:
+   - **Portfolio Management** (`/admin/portfolio-management`): Holdings and deposit management
+   - **Strategy Learning** (`/admin/strategy-learning`): AI strategy generation interface
+   - **Strategy Detail** (`/admin/strategy-detail/{code}`): Individual strategy analysis
+
+### Critical Development Notes
+
+**Backend Development**:
+- Always run lint checks before deployment
+- Monitor memory usage with price updater system  
+- File uploads require multer middleware configuration
+- Database queries use prepared statements for security
+
+**Frontend Development**:
+- All imports use `@/` alias for clean organization
+- Components follow shadcn/ui patterns and conventions
+- Mobile-first responsive design with Tailwind CSS
+- Korean language support throughout UI
+
+**Database Management**:
+- Price updater must be stopped before schema changes
+- Foreign key constraints require careful data insertion order
+- Mock data includes realistic Korean stock symbols and prices
+- Account number 99911122222 is the default test account
+
+**API Integration**:
+- Backend runs on port 3001, frontend on 5173
+- CORS configured for local development
+- File uploads require FormData, not JSON
+- Strategy names are user-defined, not auto-generated

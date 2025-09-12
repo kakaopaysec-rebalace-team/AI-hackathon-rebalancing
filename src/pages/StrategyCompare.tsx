@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown, ChevronUp, BarChart3, TrendingUp, Shield, Target } from "lucide-react";
+import { useRealTimeBalance } from "@/hooks/useRealTimeBalance";
+import { ChevronDown, ChevronUp, BarChart3, TrendingUp, Shield, Target, ArrowRight, Wallet } from "lucide-react";
 
 interface MasterStrategy {
   strategy_code: string;
@@ -38,14 +39,65 @@ interface AnalysisResult {
   };
 }
 
+interface CustomerHolding {
+  stockCode: string;
+  stockName: string;
+  quantity: number;
+  purchaseAmount: number;
+  currentPrice: number;
+  marketValue: number;
+  profitLoss: number;
+  profitLossRate: number;
+  weight: number;
+}
+
+interface SimulationResult {
+  strategy: {
+    strategy_code: string;
+    risk_level: string;
+    investment_style: string;
+  };
+  totalCurrentValue: number;
+  simulatedHoldings: {
+    stockCode: string;
+    stockName: string;
+    currentWeight: number;
+    simulatedWeight: number;
+    currentValue: number;
+    simulatedValue: number;
+    currentQuantity: number;
+    simulatedQuantity: number;
+    currentProfitLoss: number;
+    simulatedProfitLoss: number;
+    currentProfitLossRate: number;
+    simulatedProfitLossRate: number;
+    weightChange: number;
+    valueChange: number;
+  }[];
+  summary: {
+    totalWeightChange: number;
+    totalValueChange: number;
+    expectedReturn: number;
+    riskAdjustment: string;
+  };
+}
+
 const StrategyCompare = () => {
   const [masterStrategies, setMasterStrategies] = useState<MasterStrategy[]>([]);
   const [selectedStrategy, setSelectedStrategy] = useState<MasterStrategy | null>(null);
   const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [showAllStrategies, setShowAllStrategies] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { toast } = useToast();
+  
+  // 실시간 잔고 데이터 사용
+  const {
+    realTimeData,
+    lastUpdated,
+    refresh
+  } = useRealTimeBalance();
 
   // 고객 성향 분석
   const analyzeCustomerProfile = async () => {
@@ -83,14 +135,15 @@ const StrategyCompare = () => {
     }
   };
 
+
   // 전략 상세 분석
-  const analyzeStrategy = (strategy: MasterStrategy) => {
+  const analyzeStrategy = async (strategy: MasterStrategy) => {
     if (!customerProfile) return;
 
     setIsAnalyzing(true);
     
-    // Mock 분석 결과 생성
-    setTimeout(() => {
+    try {
+      // Mock 분석 결과 생성
       const riskLevelScore = getRiskLevelScore(strategy.risk_level, customerProfile.riskLevel);
       const styleScore = getStyleScore(strategy.investment_style, customerProfile.investmentStyle);
       const compatibilityScore = Math.round((riskLevelScore + styleScore) / 2);
@@ -105,8 +158,35 @@ const StrategyCompare = () => {
       };
 
       setAnalysisResult(mockAnalysis);
+      
+      // 포트폴리오 시뮬레이션 실행
+      const simulationResponse = await fetch(`${import.meta.env.VITE_API_URL}/balance/simulate-portfolio`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          strategyCode: strategy.strategy_code
+        })
+      });
+      
+      if (simulationResponse.ok) {
+        const simulationData = await simulationResponse.json();
+        setSimulationResult(simulationData);
+      } else {
+        throw new Error('시뮬레이션 요청 실패');
+      }
+      
+    } catch (error) {
+      console.error('분석 또는 시뮬레이션 오류:', error);
+      toast({
+        title: "시뮬레이션 오류",
+        description: "포트폴리오 시뮬레이션 중 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
       setIsAnalyzing(false);
-    }, 1500);
+    }
   };
 
   // 위험 수준 매칭 점수 계산
@@ -425,6 +505,206 @@ const StrategyCompare = () => {
                 ))}
               </ul>
             </div>
+
+            {/* 현재 보유종목 현황 */}
+            <div className="mt-8">
+              <h4 className="font-semibold mb-4 flex items-center gap-2">
+                <Wallet className="w-4 h-4" />
+                현재 보유종목 현황
+              </h4>
+              
+              {realTimeData && (
+                <div className="space-y-4">
+                  {/* 테이블 헤더 */}
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <div className="grid grid-cols-6 gap-2 text-xs font-medium text-gray-600 text-center">
+                      <div>종목정보</div>
+                      <div>평가금액</div>
+                      <div>현재손익</div>
+                      <div>현재비중</div>
+                      <div>예상손익</div>
+                      <div>예상비중</div>
+                    </div>
+                  </div>
+                  
+                  {/* 종목별 데이터 */}
+                  <div className="space-y-3">
+                    {realTimeData.holdings.map((holding) => {
+                      // 시뮬레이션 결과에서 해당 종목 찾기
+                      const simulatedStock = simulationResult?.simulatedHoldings.find(
+                        sim => sim.stockCode === holding.stockCode
+                      );
+                      
+                      return (
+                        <Card key={holding.stockCode} className="p-4 hover:shadow-md transition-shadow">
+                          {/* 종목명과 코드 */}
+                          <div className="flex items-center gap-2 mb-4 pb-3 border-b">
+                            <span className="font-semibold text-lg">{holding.stockName}</span>
+                            <Badge variant="outline" className="text-xs">{holding.stockCode}</Badge>
+                            <div className="ml-auto text-xs text-gray-500">
+                              실시간 시세: {holding.currentPrice.toLocaleString()}원
+                            </div>
+                          </div>
+                          
+                          {/* 6개 항목을 그리드로 표시 - 동적 폰트 크기 적용 */}
+                          <div className="grid grid-cols-6 gap-4">
+                            {/* 1. 종목정보 (이미 위에 표시됨, 여기서는 수량 정보) */}
+                            <div className="text-center">
+                              <div className="text-xs text-gray-500 mb-1">보유수량</div>
+                              <div className="font-medium text-[clamp(0.75rem,2.5vw,0.875rem)]">{holding.quantity.toLocaleString()}주</div>
+                              <div className="text-[clamp(0.625rem,2vw,0.75rem)] text-gray-400 mt-1">
+                                평균단가: {
+                                  (holding.quantity > 0 && holding.purchaseAmount > 0) 
+                                    ? Math.floor(holding.purchaseAmount / holding.quantity).toLocaleString()
+                                    : '0'
+                                }원
+                              </div>
+                            </div>
+                            
+                            {/* 2. 평가금액 (실시간) */}
+                            <div className="text-center">
+                              <div className="text-xs text-gray-500 mb-1">평가금액</div>
+                              <div className="font-bold text-blue-800 text-[clamp(0.75rem,2.5vw,0.875rem)]">
+                                {holding.marketValue.toLocaleString()}원
+                              </div>
+                              <div className="text-[clamp(0.625rem,2vw,0.75rem)] text-blue-600 mt-1">
+                                실시간 반영
+                              </div>
+                            </div>
+                            
+                            {/* 3. 현재손익 (실시간) */}
+                            <div className="text-center">
+                              <div className="text-xs text-gray-500 mb-1">현재손익</div>
+                              <div className={`font-bold text-[clamp(0.75rem,2.5vw,0.875rem)] whitespace-nowrap ${
+                                holding.profitLoss >= 0 ? 'text-red-600' : 'text-blue-600'
+                              }`}>
+                                {holding.profitLoss >= 0 ? '+' : ''}{Math.floor(holding.profitLoss).toLocaleString()}원
+                              </div>
+                              <div className={`text-[clamp(0.625rem,2vw,0.75rem)] ${
+                                holding.profitLoss >= 0 ? 'text-red-500' : 'text-blue-500'
+                              }`}>
+                                ({holding.profitLossRate >= 0 ? '+' : ''}{holding.profitLossRate.toFixed(2)}%)
+                              </div>
+                            </div>
+                            
+                            {/* 4. 현재비중 */}
+                            <div className="text-center">
+                              <div className="text-xs text-gray-500 mb-1">현재비중</div>
+                              <div className="font-bold text-purple-700 text-[clamp(0.75rem,2.5vw,0.875rem)]">
+                                {holding.weight.toFixed(1)}%
+                              </div>
+                              <div className="text-[clamp(0.625rem,2vw,0.75rem)] text-purple-600 mt-1">
+                                포트폴리오 내
+                              </div>
+                            </div>
+                            
+                            {/* 5. 시뮬레이션 결과 - 예상손익 */}
+                            <div className="text-center">
+                              <div className="text-xs text-gray-500 mb-1">예상손익</div>
+                              {simulatedStock ? (
+                                <>
+                                  <div className={`font-bold text-[clamp(0.75rem,2.5vw,0.875rem)] whitespace-nowrap ${
+                                    simulatedStock.simulatedProfitLoss >= 0 ? 'text-red-600' : 'text-blue-600'
+                                  }`}>
+                                    {simulatedStock.simulatedProfitLoss >= 0 ? '+' : ''}
+                                    {Math.floor(simulatedStock.simulatedProfitLoss).toLocaleString()}원
+                                  </div>
+                                  <div className={`text-[clamp(0.625rem,2vw,0.75rem)] ${
+                                    simulatedStock.simulatedProfitLoss >= 0 ? 'text-red-500' : 'text-blue-500'
+                                  }`}>
+                                    ({simulatedStock.simulatedProfitLossRate >= 0 ? '+' : ''}
+                                    {simulatedStock.simulatedProfitLossRate.toFixed(2)}%)
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="text-xs text-gray-400">시뮬레이션 중...</div>
+                              )}
+                            </div>
+                            
+                            {/* 6. 시뮬레이션 결과 - 예상비중 */}
+                            <div className="text-center">
+                              <div className="text-xs text-gray-500 mb-1">예상비중</div>
+                              {simulatedStock ? (
+                                <>
+                                  <div className="font-bold text-green-700 text-[clamp(0.75rem,2.5vw,0.875rem)]">
+                                    {simulatedStock.simulatedWeight.toFixed(1)}%
+                                  </div>
+                                  <div className={`font-medium text-[clamp(0.625rem,2vw,0.75rem)] ${
+                                    simulatedStock.weightChange > 0 ? 'text-green-600' : 
+                                    simulatedStock.weightChange < 0 ? 'text-red-600' : 'text-gray-500'
+                                  }`}>
+                                    {simulatedStock.weightChange > 0 ? '+' : ''}
+                                    {simulatedStock.weightChange.toFixed(1)}%p
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="text-xs text-gray-400">계산 중...</div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* 변화량 요약 */}
+                          {simulatedStock && (
+                            <div className="mt-4 pt-3 border-t bg-gray-50 rounded-lg p-3">
+                              <div className="text-center">
+                                <div className="text-xs text-gray-600 mb-2">시뮬레이션 변화 예상</div>
+                                <div className="flex justify-center gap-6 text-[clamp(0.75rem,2.5vw,0.875rem)]">
+                                  <div className={`whitespace-nowrap ${
+                                    simulatedStock.valueChange > 0 ? 'text-green-600' : 
+                                    simulatedStock.valueChange < 0 ? 'text-red-600' : 'text-gray-600'
+                                  }`}>
+                                    <span className="font-medium">평가금액 </span>
+                                    {simulatedStock.valueChange > 0 ? '+' : ''}
+                                    {Math.floor(simulatedStock.valueChange).toLocaleString()}원
+                                  </div>
+                                  <div className={`${
+                                    simulatedStock.weightChange > 0 ? 'text-green-600' : 
+                                    simulatedStock.weightChange < 0 ? 'text-red-600' : 'text-gray-600'
+                                  }`}>
+                                    <span className="font-medium">비중 </span>
+                                    {simulatedStock.weightChange > 0 ? '+' : ''}
+                                    {simulatedStock.weightChange.toFixed(1)}%p
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              
+              {!realTimeData && (
+                <div className="text-center py-8 text-gray-500">
+                  보유종목 데이터를 불러오는 중...
+                </div>
+              )}
+            </div>
+
+            {/* 시뮬레이션 요약 */}
+            {simulationResult && (
+              <div className="mt-8">
+                <Card className="p-4 bg-gradient-to-r from-green-50 to-blue-50">
+                  <h5 className="font-semibold mb-3 flex items-center gap-2">
+                    <ArrowRight className="w-4 h-4" />
+                    시뮬레이션 요약 ({selectedStrategy?.strategy_name})
+                  </h5>
+                  <div className="text-center text-[clamp(0.875rem,3vw,1rem)]">
+                    <div>
+                      <span className="text-gray-600">예상 수익률: </span>
+                      <span className={`font-medium text-lg ${
+                        simulationResult.summary.expectedReturn >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {simulationResult.summary.expectedReturn >= 0 ? '+' : ''}
+                        {simulationResult.summary.expectedReturn.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
           </Card>
         )}
       </div>

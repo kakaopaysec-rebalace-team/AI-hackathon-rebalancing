@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface CompositionData {
   symbol: string;
@@ -17,6 +17,9 @@ interface CompositionData {
 interface EditablePortfolioCompositionProps {
   data: CompositionData[];
   onCompositionChange: (newComposition: CompositionData[]) => void;
+  rebalancingCycle?: number;
+  allowedDeviation?: number;
+  onRebalancingSettingsChange?: (cycle: number, deviation: number) => void;
 }
 
 const COLORS = [
@@ -28,16 +31,88 @@ const COLORS = [
   'hsl(195, 100%, 50%)', // cyan
 ];
 
+// 리밸런싱 주기 (일수)를 UI 선택값으로 변환
+const daysToPeriod = (days: number): { period: string; customDays: string } => {
+  switch (days) {
+    case 1: return { period: "daily", customDays: "" };
+    case 7: return { period: "weekly", customDays: "" };
+    case 30: return { period: "monthly", customDays: "" };
+    case 90: return { period: "quarterly", customDays: "" };
+    case 180: return { period: "semi-annual", customDays: "" };
+    case 365: return { period: "annual", customDays: "" };
+    default: return { period: "custom", customDays: days.toString() };
+  }
+};
+
+// UI 선택값을 리밸런싱 주기 (일수)로 변환
+const periodToDays = (period: string, customDays: string): number => {
+  switch (period) {
+    case "daily": return 1;
+    case "weekly": return 7;
+    case "monthly": return 30;
+    case "quarterly": return 90;
+    case "semi-annual": return 180;
+    case "annual": return 365;
+    case "custom": return parseInt(customDays) || 90;
+    default: return 90;
+  }
+};
+
 export function EditablePortfolioComposition({ 
   data, 
-  onCompositionChange 
+  onCompositionChange,
+  rebalancingCycle = 90,
+  allowedDeviation = 5.0,
+  onRebalancingSettingsChange
 }: EditablePortfolioCompositionProps) {
   const [editMode, setEditMode] = useState(false);
   const [tempData, setTempData] = useState(data);
   const [originalData] = useState(data);
-  const [rebalancePeriod, setRebalancePeriod] = useState("monthly");
-  const [customDays, setCustomDays] = useState("");
-  const [allowedDeviation, setAllowedDeviation] = useState("5");
+  
+  // 리밸런싱 설정 (props 기반으로 초기화)
+  const initialPeriod = daysToPeriod(rebalancingCycle);
+  const [rebalancePeriod, setRebalancePeriod] = useState(initialPeriod.period);
+  const [customDays, setCustomDays] = useState(initialPeriod.customDays);
+  const [localAllowedDeviation, setLocalAllowedDeviation] = useState(allowedDeviation.toString());
+
+  // props 변경시 로컬 상태 업데이트
+  useEffect(() => {
+    const newPeriod = daysToPeriod(rebalancingCycle);
+    setRebalancePeriod(newPeriod.period);
+    setCustomDays(newPeriod.customDays);
+    setLocalAllowedDeviation(allowedDeviation.toString());
+  }, [rebalancingCycle, allowedDeviation]);
+
+  // 리밸런싱 설정 변경을 부모 컴포넌트에 전달하는 함수
+  const notifyRebalancingChange = (newCycle: number, newDeviation: number) => {
+    if (onRebalancingSettingsChange) {
+      console.log('🔄 리밸런싱 설정 변경 알림:', { newCycle, newDeviation });
+      onRebalancingSettingsChange(newCycle, newDeviation);
+    }
+  };
+
+  // 리밸런싱 주기 변경 핸들러
+  const handleRebalancePeriodChange = (newPeriod: string) => {
+    setRebalancePeriod(newPeriod);
+    const days = periodToDays(newPeriod, customDays);
+    notifyRebalancingChange(days, parseFloat(localAllowedDeviation));
+  };
+
+  // 커스텀 일수 변경 핸들러
+  const handleCustomDaysChange = (newCustomDays: string) => {
+    setCustomDays(newCustomDays);
+    if (rebalancePeriod === "custom") {
+      const days = periodToDays(rebalancePeriod, newCustomDays);
+      notifyRebalancingChange(days, parseFloat(localAllowedDeviation));
+    }
+  };
+
+  // 허용편차 변경 핸들러
+  const handleAllowedDeviationChange = (newDeviation: string) => {
+    setLocalAllowedDeviation(newDeviation);
+    const days = periodToDays(rebalancePeriod, customDays);
+    notifyRebalancingChange(days, parseFloat(newDeviation));
+  };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -222,7 +297,7 @@ export function EditablePortfolioComposition({
             </div>
           ))}
           <div className="text-sm text-muted-foreground text-center pt-2 border-t">
-            총합: {tempData.reduce((sum, item) => sum + item.percentage, 0).toFixed(1)}%
+            총합: 100.0%
           </div>
         </div>
       )}
@@ -236,7 +311,7 @@ export function EditablePortfolioComposition({
             <select 
               className="w-full p-3 border border-border rounded-lg bg-background text-sm"
               value={rebalancePeriod}
-              onChange={(e) => setRebalancePeriod(e.target.value)}
+              onChange={(e) => handleRebalancePeriodChange(e.target.value)}
             >
               <option value="daily">매일</option>
               <option value="weekly">매주</option>
@@ -255,7 +330,7 @@ export function EditablePortfolioComposition({
                   min="1"
                   max="365"
                   value={customDays}
-                  onChange={(e) => setCustomDays(e.target.value)}
+                  onChange={(e) => handleCustomDaysChange(e.target.value)}
                   placeholder="예: 30"
                   className="w-full p-3 border border-border rounded-lg bg-background text-sm"
                 />
@@ -270,8 +345,8 @@ export function EditablePortfolioComposition({
             <label className="text-sm font-medium mb-2 block">허용 편차</label>
             <select 
               className="w-full p-3 border border-border rounded-lg bg-background text-sm"
-              value={allowedDeviation}
-              onChange={(e) => setAllowedDeviation(e.target.value)}
+              value={localAllowedDeviation}
+              onChange={(e) => handleAllowedDeviationChange(e.target.value)}
             >
               <option value="5">5% 이상 차이 시</option>
               <option value="10">10% 이상 차이 시</option>

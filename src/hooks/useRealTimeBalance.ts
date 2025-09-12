@@ -11,6 +11,7 @@ interface RealTimeBalance {
     quantity: number;
     currentPrice: number;
     avgPrice: number;
+    purchaseAmount: number;
     marketValue: number;
     profitLoss: number;
     profitLossRate: number;
@@ -76,7 +77,8 @@ export const useRealTimeBalance = () => {
       stockName: stock.stockName,
       quantity: stock.quantity,
       currentPrice: stock.currentPrice,
-      avgPrice: stock.purchaseAmount / stock.quantity,
+      avgPrice: (stock.quantity > 0 && stock.purchaseAmount > 0) ? stock.purchaseAmount / stock.quantity : 0,
+      purchaseAmount: stock.purchaseAmount,
       marketValue: stock.marketValue,
       profitLoss: stock.profitLoss,
       profitLossRate: stock.profitLossRate,
@@ -138,7 +140,8 @@ export const useRealTimeBalance = () => {
           stockName: stock.stockName,
           quantity: stock.quantity,
           currentPrice: stock.currentPrice,
-          avgPrice: stock.purchaseAmount / stock.quantity,
+          avgPrice: (stock.quantity > 0 && stock.purchaseAmount > 0) ? stock.purchaseAmount / stock.quantity : 0,
+          purchaseAmount: stock.purchaseAmount,
           marketValue: stock.marketValue,
           profitLoss: stock.profitLoss,
           profitLossRate: stock.profitLossRate,

@@ -23,10 +23,10 @@ export function PortfolioSummary({
         
         <div className={cn(
           "flex items-center justify-center gap-2 text-lg font-medium",
-          isPositive ? "text-white" : "text-white"
+          "text-white"
         )}>
           {isPositive ? <TrendingUp size={20} /> : <TrendingDown size={20} />}
-          <span>{isPositive ? '+' : ''}₩{totalChange.toLocaleString()}</span>
+          <span className="whitespace-nowrap">{isPositive ? '+' : ''}₩{Math.floor(totalChange).toLocaleString()}</span>
           <span>({isPositive ? '+' : ''}{totalChangePercent.toFixed(2)}%)</span>
         </div>
         
