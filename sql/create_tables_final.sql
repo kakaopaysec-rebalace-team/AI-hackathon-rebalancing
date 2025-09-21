@@ -1,16 +1,16 @@
-DROP TABLE customer_balance;
-DROP TABLE customer_deposit;
-DROP TABLE customer_strategy;
-DROP TABLE rebalancing;
-DROP TABLE rebalancing_analysis;
-DROP TABLE rebalancing_master;
-DROP TABLE stock_current_price;;
-DROP TABLE stock_info;
-DROP TABLE strategy_settings;
-DROP TABLE strategy_learning;
-DROP TABLE strategy_learning_analysis;
-DROP TABLE strategy_learning_master;
-DROP TABLE trading_history;
+#DROP TABLE customer_balance;
+#DROP TABLE customer_deposit;
+#DROP TABLE customer_strategy;
+#DROP TABLE rebalancing;
+#DROP TABLE rebalancing_analysis;
+#DROP TABLE rebalancing_master;
+#DROP TABLE stock_current_price;;
+#DROP TABLE stock_info;
+#DROP TABLE strategy_settings;
+#DROP TABLE strategy_learning;
+#DROP TABLE strategy_learning_analysis;
+#DROP TABLE strategy_learning_master;
+#DROP TABLE trading_history;
 
 -- 고객잔고
 CREATE TABLE `customer_balance` (
