@@ -7,7 +7,7 @@ set -e  # 오류 발생 시 스크립트 중단
 ./stop.sh
 
 
-mysql -u rebalance -p kpsdb < /Users/todd.rsp/tmp/price.sql
+#mysql -u rebalance -p kpsdb < /Users/todd.rsp/tmp/price.sql
 
 echo "🚀 포트폴리오 관리 시스템 시작 중..."
 echo "=================================================="
