@@ -76,7 +76,7 @@ http://127.0.0.1:8080/admin/portfolio-management
 
 ## 실행 방법
 1. 데이터 베이스 생성 (최초 1회)
-- sql/init)db.sh
+- sql/init_db.sh
 
 2. 실행
 -  scripts/start.sh
