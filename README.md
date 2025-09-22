@@ -86,7 +86,7 @@ http://127.0.0.1:8080/admin/portfolio-management
 3. 종료
 - scripts/stop.sh
 
-4. 산출물
+## 산출물
 - 데모 링크 : 
   고객용 : http://144.172.91.13:8080
   관리자용 : http://144.172.91.13:8080/admin/portfolio-management
